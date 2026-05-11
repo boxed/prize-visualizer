@@ -1,0 +1,86 @@
+[
+  {
+    "wikidataId": "Q735982",
+    "name": "Sol Spiegelman",
+    "year": null,
+    "gender": "male",
+    "birthCountry": "United States",
+    "currentCountry": "United States",
+    "birthYear": 1914,
+    "wikipediaSlug": "Sol_Spiegelman",
+    "religions": [],
+    "ethnicGroups": []
+  },
+  {
+    "wikidataId": "Q64020609",
+    "name": "Theodore Cooper",
+    "year": null,
+    "gender": "male",
+    "birthCountry": null,
+    "currentCountry": null,
+    "birthYear": 1928,
+    "wikipediaSlug": null,
+    "religions": [],
+    "ethnicGroups": []
+  },
+  {
+    "wikidataId": "Q82770220",
+    "name": "Lois Maddox Miller",
+    "year": 1958,
+    "gender": "female",
+    "birthCountry": null,
+    "currentCountry": null,
+    "birthYear": null,
+    "wikipediaSlug": null,
+    "religions": [],
+    "ethnicGroups": []
+  },
+  {
+    "wikidataId": "Q86358702",
+    "name": "Sandra A. Daugherty",
+    "year": 1980,
+    "gender": "female",
+    "birthCountry": null,
+    "currentCountry": null,
+    "birthYear": null,
+    "wikipediaSlug": null,
+    "religions": [],
+    "ethnicGroups": []
+  },
+  {
+    "wikidataId": "Q8070836",
+    "name": "Zhijian Chen",
+    "year": 2024,
+    "gender": "male",
+    "birthCountry": "People's Republic of China",
+    "currentCountry": "People's Republic of China",
+    "birthYear": 1966,
+    "wikipediaSlug": "Zhijian_Chen",
+    "religions": [],
+    "ethnicGroups": []
+  },
+  {
+    "wikidataId": "Q30528426",
+    "name": "Dirk Görlich",
+    "year": 2025,
+    "gender": "male",
+    "birthCountry": "Germany",
+    "currentCountry": "Germany",
+    "birthYear": 1966,
+    "wikipediaSlug": "Dirk_G%C3%B6rlich",
+    "religions": [],
+    "ethnicGroups": []
+  },
+  {
+    "wikidataId": "Q15849224",
+    "name": "Steven McKnight",
+    "year": 2025,
+    "gender": "male",
+    "birthCountry": null,
+    "currentCountry": null,
+    "birthYear": 1949,
+    "wikipediaSlug": "Steven_McKnight",
+    "religions": [],
+    "ethnicGroups": []
+  }
+]

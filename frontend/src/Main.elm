@@ -67,6 +67,7 @@ type Selection
     | SelCountry String
     | SelCategory String
     | SelReligion String
+    | SelReligionGroup String
     | SelEthnicGroup String
     | SelMissingReligion
     | SelMissingEthnicGroup
@@ -77,6 +78,78 @@ type Selection
 unknownLabel : String
 unknownLabel =
     "(unknown / not in Wikidata)"
+
+
+christianDenominations : List String
+christianDenominations =
+    [ "Christianity"
+    , "Catholicism"
+    , "Lutheranism"
+    , "Anglicanism"
+    , "Reformed Church"
+    , "Protestantism"
+    , "Eastern Orthodoxy"
+    , "Methodism"
+    , "Presbyterianism"
+    , "Quakers"
+    , "Quaker"
+    , "Episcopal Church"
+    , "Congregational churches"
+    , "Mormonism"
+    , "Glasite"
+    , "Lapsed Catholic"
+    , "Church of England"
+    , "Baptists"
+    , "Christian atheism"
+    , "Church of Ireland"
+    , "Continental Reformed Protestantism"
+    , "Church of Sweden"
+    , "Anglo-catholicism"
+    , "Unitarianism"
+    , "Protestant Church in Germany"
+    , "Maronite Church"
+    , "Congregationalist polity"
+    , "United Church of Christ"
+    , "Unitarian Universalism"
+    , "Pentecost"
+    ]
+
+
+islamicDenominations : List String
+islamicDenominations =
+    [ "Islam", "Ahmadiyya", "Twelver Shiism" ]
+
+
+religionGroupName : String -> String
+religionGroupName r =
+    if List.member r christianDenominations then
+        "Christianity"
+
+    else if List.member r islamicDenominations then
+        "Islam"
+
+    else
+        r
+
+
+isReligionGroup : String -> Bool
+isReligionGroup s =
+    s == "Christianity" || s == "Islam"
+
+
+religionsRolledUp : List String -> List String
+religionsRolledUp rs =
+    rs
+        |> List.map religionGroupName
+        |> List.foldr
+            (\x acc ->
+                if List.member x acc then
+                    acc
+
+                else
+                    x :: acc
+            )
+            []
 
 
 selectionLabel : Selection -> String
@@ -93,6 +166,9 @@ selectionLabel sel =
 
         SelReligion s ->
             "religion: " ++ s
+
+        SelReligionGroup s ->
+            "religion: " ++ s ++ " (all denominations)"
 
         SelEthnicGroup s ->
             "ethnic group: " ++ s
@@ -124,6 +200,9 @@ prizeMatchesSelection sel p =
 
         SelReligion s ->
             List.member s p.religions
+
+        SelReligionGroup s ->
+            List.any (\r -> religionGroupName r == s) p.religions
 
         SelEthnicGroup s ->
             List.member s p.ethnicGroups
@@ -479,7 +558,7 @@ viewReady model =
                 viewByCategory ps
 
             ByReligion ->
-                viewByMultiTag "religion" .religions ps
+                viewByMultiTag "religion" (\p -> religionsRolledUp p.religions) ps
 
             ByEthnicGroup ->
                 viewByMultiTag "ethnic group" .ethnicGroups ps
@@ -519,6 +598,14 @@ viewDrilldown model filteredPrizes =
 
                 yearCounts =
                     countByYear matching
+
+                extras =
+                    case sel of
+                        SelReligionGroup g ->
+                            [ denominationBreakdown g matching ]
+
+                        _ ->
+                            []
             in
             div [ A.class "drilldown" ]
                 [ div [ A.class "drilldown-header" ]
@@ -536,10 +623,50 @@ viewDrilldown model filteredPrizes =
 
                   else
                     div []
-                        [ yearlyBarChart model.minYear model.maxYear yearCounts
-                        , Html.ul [ A.class "laureate-list" ] (List.map viewLaureate matching)
-                        ]
+                        ([ yearlyBarChart model.minYear model.maxYear yearCounts ]
+                            ++ extras
+                            ++ [ Html.ul [ A.class "laureate-list" ] (List.map viewLaureate matching) ]
+                        )
                 ]
+
+
+denominationBreakdown : String -> List Prize -> Html Msg
+denominationBreakdown groupName matching =
+    let
+        rows =
+            matching
+                |> List.concatMap
+                    (\p ->
+                        p.religions
+                            |> List.filter (\r -> religionGroupName r == groupName)
+                    )
+                |> List.foldl
+                    (\k d -> Dict.update k (Maybe.map ((+) 1) >> Maybe.withDefault 1 >> Just) d)
+                    Dict.empty
+                |> Dict.toList
+                |> List.sortBy (\( _, n ) -> -n)
+
+        labelFn ( c, n ) =
+            (if c == groupName then
+                c ++ " (unspecified)"
+
+             else
+                c
+            )
+                ++ " — "
+                ++ String.fromInt n
+
+        onClickFn ( c, _ ) =
+            Select (SelReligion c)
+    in
+    if List.length rows <= 1 then
+        text ""
+
+    else
+        div [ A.class "sub-breakdown" ]
+            [ h2 [] [ text ("Denomination breakdown — " ++ groupName) ]
+            , barChartTagged onClickFn rows labelFn (\_ -> False)
+            ]
 
 
 yearlyBarChart : Int -> Int -> List ( Int, Int ) -> Html Msg
@@ -911,7 +1038,11 @@ viewByMultiTag label getter ps =
                         SelMissingEthnicGroup
 
                  else if label == "religion" then
-                    SelReligion c
+                    if isReligionGroup c then
+                        SelReligionGroup c
+
+                    else
+                        SelReligion c
 
                  else
                     SelEthnicGroup c
@@ -931,13 +1062,18 @@ viewByMultiTag label getter ps =
                         else
                             "P172"
                        )
-                    ++ ". Coverage in current selection: "
+                    ++ " plus Wikipedia categories and curated lists (Jewish, Christian, Latin American, Indian, Chinese laureates). Coverage in current selection: "
                     ++ String.fromInt (List.length tagged)
                     ++ " of "
                     ++ String.fromInt total
                     ++ " prizes ("
                     ++ coverage
-                    ++ "). The rest are bucketed as “unknown” — Wikidata simply has no value recorded. P172 (ethnic group) is also typically only used for minority/diaspora identities, so majority national identities (e.g. Swedish, French) generally appear as unknown rather than tagged."
+                    ++ (if label == "religion" then
+                            "). Christianity and Islam are rolled up into umbrella groups — click them to see the denomination breakdown. Notes: \"Jewish\" routinely conflates religion and ethnicity; categories may be editor-inconsistent; majority national identities (e.g. \"Swedish\") rarely appear here because Wikipedia tags them as nationality, not heritage."
+
+                        else
+                            "). The rest are bucketed as “unknown”. Notes: categories may be editor-inconsistent; majority national identities (e.g. \"Swedish\") rarely appear here because Wikipedia tags them as nationality, not heritage."
+                       )
                 )
             ]
         , if List.isEmpty rows then

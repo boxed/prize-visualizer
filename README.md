@@ -47,20 +47,20 @@ python3 scripts/fetch_wikidata_prizes.py  # → data/raw/prizes/<slug>.json (Fie
 python3 scripts/build_combined.py         # → data/processed/prizes.json (Elm reads this)
 python3 scripts/build_population.py       # → data/processed/population.json
 
-# 2. Compile the frontend
-cd frontend
-elm make src/Main.elm --output=main.js
+# 2. Compile the frontend (built artifacts live in the repo root so GitHub Pages can serve them)
+(cd frontend && elm make src/Main.elm --output=../main.js)
 
-# 3. Serve from the project root (so /data/processed/*.json resolves)
-cd ..
+# 3. Serve from the project root
 python3 -m http.server 8765 --bind 127.0.0.1
-# open http://127.0.0.1:8765/frontend/
+# open http://127.0.0.1:8765/
 ```
 
 ## Layout
 
 ```
 .
+├── index.html               # GitHub Pages entry point
+├── main.js                  # compiled Elm output (checked in for Pages)
 ├── scripts/
 │   ├── fetch_nobel.py        # downloads raw API responses
 │   ├── build_dataset.py      # normalizes to one record per laureate-prize
@@ -71,9 +71,7 @@ python3 -m http.server 8765 --bind 127.0.0.1
 │       ├── nobel.json
 │       └── population.json
 └── frontend/
-    ├── index.html
     ├── elm.json
-    ├── main.js               # compiled, gitignored in real projects
     └── src/Main.elm
 ```
 

@@ -58,6 +58,7 @@ type alias Model =
     , prizeFilter : Maybe String
     , minYear : Int
     , maxYear : Int
+    , includePeace : Bool
     , selection : Selection
     }
 
@@ -236,6 +237,7 @@ init _ =
       , prizeFilter = Nothing
       , minYear = 1901
       , maxYear = 2026
+      , includePeace = False
       , selection = NoSel
       }
     , Cmd.batch [ fetchPrizes, fetchPopulation ]
@@ -249,7 +251,7 @@ init _ =
 fetchPrizes : Cmd Msg
 fetchPrizes =
     Http.get
-        { url = "/data/processed/prizes.json"
+        { url = "data/processed/prizes.json"
         , expect = Http.expectJson GotPrizes (D.list prizeDecoder)
         }
 
@@ -257,7 +259,7 @@ fetchPrizes =
 fetchPopulation : Cmd Msg
 fetchPopulation =
     Http.get
-        { url = "/data/processed/population.json"
+        { url = "data/processed/population.json"
         , expect = Http.expectJson GotPopulation (D.list populationDecoder)
         }
 
@@ -309,6 +311,7 @@ type Msg
     | SetPrize String
     | SetMinYear String
     | SetMaxYear String
+    | SetIncludePeace Bool
     | Select Selection
     | ClearSelection
 
@@ -369,6 +372,9 @@ update msg model =
 
         SetMaxYear s ->
             ( { model | maxYear = String.toInt s |> Maybe.withDefault model.maxYear }, Cmd.none )
+
+        SetIncludePeace b ->
+            ( { model | includePeace = b, selection = NoSel }, Cmd.none )
 
 
 markReady : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
@@ -437,6 +443,12 @@ filtered model =
 
                     Just c ->
                         p.prize == c
+            )
+        |> List.filter
+            (\p ->
+                model.includePeace
+                    || model.categoryFilter == Just "Peace"
+                    || p.category /= Just "Peace"
             )
 
 
@@ -866,6 +878,15 @@ viewControls model =
                 , E.onInput SetMaxYear
                 ]
                 []
+            ]
+        , label [ A.class "peace-toggle", A.title "The Nobel Peace Prize is awarded on different criteria from the scientific prizes and doesn't fit cleanly into this dataset; excluded by default." ]
+            [ Html.input
+                [ A.type_ "checkbox"
+                , A.checked model.includePeace
+                , E.onCheck SetIncludePeace
+                ]
+                []
+            , text " Include Peace Prize"
             ]
         ]
 

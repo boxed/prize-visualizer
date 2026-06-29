@@ -4553,6 +4553,23 @@ function _Http_track(router, xhr, tracker)
 			size: event.lengthComputable ? $elm$core$Maybe$Just(event.total) : $elm$core$Maybe$Nothing
 		}))));
 	});
+}
+
+function _Url_percentEncode(string)
+{
+	return encodeURIComponent(string);
+}
+
+function _Url_percentDecode(string)
+{
+	try
+	{
+		return $elm$core$Maybe$Just(decodeURIComponent(string));
+	}
+	catch (e)
+	{
+		return $elm$core$Maybe$Nothing;
+	}
 }var $elm$core$Basics$EQ = {$: 'EQ'};
 var $elm$core$Basics$GT = {$: 'GT'};
 var $elm$core$Basics$LT = {$: 'LT'};
@@ -5345,7 +5362,18 @@ var $elm$browser$Browser$element = _Browser_element;
 var $author$project$Main$Loading = {$: 'Loading'};
 var $author$project$Main$NoSel = {$: 'NoSel'};
 var $author$project$Main$TopCountries = {$: 'TopCountries'};
+var $elm$core$Maybe$andThen = F2(
+	function (callback, maybeValue) {
+		if (maybeValue.$ === 'Just') {
+			var value = maybeValue.a;
+			return callback(value);
+		} else {
+			return $elm$core$Maybe$Nothing;
+		}
+	});
 var $elm$core$Platform$Cmd$batch = _Platform_batch;
+var $author$project$Main$defaultMaxYear = 2026;
+var $author$project$Main$defaultMinYear = 1901;
 var $elm$core$Dict$RBEmpty_elm_builtin = {$: 'RBEmpty_elm_builtin'};
 var $elm$core$Dict$empty = $elm$core$Dict$RBEmpty_elm_builtin;
 var $author$project$Main$GotPopulation = function (a) {
@@ -6318,18 +6346,16 @@ var $author$project$Main$fetchPrizes = $elm$http$Http$get(
 			$elm$json$Json$Decode$list($author$project$Main$prizeDecoder)),
 		url: 'data/processed/prizes.json'
 	});
-var $author$project$Main$init = function (_v0) {
-	return _Utils_Tuple2(
-		{categoryFilter: $elm$core$Maybe$Nothing, includePeace: false, maxYear: 2026, minYear: 1901, populations: $elm$core$Dict$empty, prizeFilter: $elm$core$Maybe$Nothing, prizes: _List_Nil, selection: $author$project$Main$NoSel, status: $author$project$Main$Loading, tab: $author$project$Main$TopCountries},
-		$elm$core$Platform$Cmd$batch(
-			_List_fromArray(
-				[$author$project$Main$fetchPrizes, $author$project$Main$fetchPopulation])));
-};
-var $elm$core$Platform$Sub$batch = _Platform_batch;
-var $elm$core$Platform$Sub$none = $elm$core$Platform$Sub$batch(_List_Nil);
-var $author$project$Main$Failed = function (a) {
-	return {$: 'Failed', a: a};
-};
+var $elm$core$Maybe$map = F2(
+	function (f, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return $elm$core$Maybe$Just(
+				f(value));
+		} else {
+			return $elm$core$Maybe$Nothing;
+		}
+	});
 var $elm$core$Dict$fromList = function (assocs) {
 	return A3(
 		$elm$core$List$foldl,
@@ -6341,6 +6367,180 @@ var $elm$core$Dict$fromList = function (assocs) {
 			}),
 		$elm$core$Dict$empty,
 		assocs);
+};
+var $elm$url$Url$percentDecode = _Url_percentDecode;
+var $author$project$Main$parseQuery = function (search) {
+	var body = A2($elm$core$String$startsWith, '?', search) ? A2($elm$core$String$dropLeft, 1, search) : search;
+	return $elm$core$Dict$fromList(
+		A2(
+			$elm$core$List$filterMap,
+			function (pair) {
+				var _v0 = A2($elm$core$String$split, '=', pair);
+				if (_v0.b) {
+					var key = _v0.a;
+					var valueParts = _v0.b;
+					return (key === '') ? $elm$core$Maybe$Nothing : A2(
+						$elm$core$Maybe$map,
+						function (v) {
+							return _Utils_Tuple2(key, v);
+						},
+						$elm$url$Url$percentDecode(
+							A2($elm$core$String$join, '=', valueParts)));
+				} else {
+					return $elm$core$Maybe$Nothing;
+				}
+			},
+			A2($elm$core$String$split, '&', body)));
+};
+var $author$project$Main$SelCategory = function (a) {
+	return {$: 'SelCategory', a: a};
+};
+var $author$project$Main$SelCountry = function (a) {
+	return {$: 'SelCountry', a: a};
+};
+var $author$project$Main$SelDecade = function (a) {
+	return {$: 'SelDecade', a: a};
+};
+var $author$project$Main$SelEthnicGroup = function (a) {
+	return {$: 'SelEthnicGroup', a: a};
+};
+var $author$project$Main$SelMissingEthnicGroup = {$: 'SelMissingEthnicGroup'};
+var $author$project$Main$SelMissingReligion = {$: 'SelMissingReligion'};
+var $author$project$Main$SelReligion = function (a) {
+	return {$: 'SelReligion', a: a};
+};
+var $author$project$Main$SelReligionGroup = function (a) {
+	return {$: 'SelReligionGroup', a: a};
+};
+var $author$project$Main$SelYear = function (a) {
+	return {$: 'SelYear', a: a};
+};
+var $elm$core$Maybe$withDefault = F2(
+	function (_default, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return value;
+		} else {
+			return _default;
+		}
+	});
+var $author$project$Main$selectionFromCode = function (code) {
+	var _v0 = A2($elm$core$String$split, ':', code);
+	if (_v0.b) {
+		var kind = _v0.a;
+		var rest = _v0.b;
+		var value = A2($elm$core$String$join, ':', rest);
+		switch (kind) {
+			case 'country':
+				return $author$project$Main$SelCountry(value);
+			case 'category':
+				return $author$project$Main$SelCategory(value);
+			case 'religion':
+				return $author$project$Main$SelReligion(value);
+			case 'religiongroup':
+				return $author$project$Main$SelReligionGroup(value);
+			case 'ethnic':
+				return $author$project$Main$SelEthnicGroup(value);
+			case 'missingreligion':
+				return $author$project$Main$SelMissingReligion;
+			case 'missingethnic':
+				return $author$project$Main$SelMissingEthnicGroup;
+			case 'decade':
+				return A2(
+					$elm$core$Maybe$withDefault,
+					$author$project$Main$NoSel,
+					A2(
+						$elm$core$Maybe$map,
+						$author$project$Main$SelDecade,
+						$elm$core$String$toInt(value)));
+			case 'year':
+				return A2(
+					$elm$core$Maybe$withDefault,
+					$author$project$Main$NoSel,
+					A2(
+						$elm$core$Maybe$map,
+						$author$project$Main$SelYear,
+						$elm$core$String$toInt(value)));
+			default:
+				return $author$project$Main$NoSel;
+		}
+	} else {
+		return $author$project$Main$NoSel;
+	}
+};
+var $author$project$Main$ByCategory = {$: 'ByCategory'};
+var $author$project$Main$ByEthnicGroup = {$: 'ByEthnicGroup'};
+var $author$project$Main$ByReligion = {$: 'ByReligion'};
+var $author$project$Main$GenderOverTime = {$: 'GenderOverTime'};
+var $author$project$Main$OverTime = {$: 'OverTime'};
+var $author$project$Main$PerCapita = {$: 'PerCapita'};
+var $author$project$Main$tabFromCode = function (s) {
+	switch (s) {
+		case 'percapita':
+			return $author$project$Main$PerCapita;
+		case 'time':
+			return $author$project$Main$OverTime;
+		case 'gender':
+			return $author$project$Main$GenderOverTime;
+		case 'category':
+			return $author$project$Main$ByCategory;
+		case 'religion':
+			return $author$project$Main$ByReligion;
+		case 'ethnicity':
+			return $author$project$Main$ByEthnicGroup;
+		default:
+			return $author$project$Main$TopCountries;
+	}
+};
+var $author$project$Main$init = function (search) {
+	var q = $author$project$Main$parseQuery(search);
+	return _Utils_Tuple2(
+		{
+			categoryFilter: A2($elm$core$Dict$get, 'cat', q),
+			includePeace: _Utils_eq(
+				A2($elm$core$Dict$get, 'peace', q),
+				$elm$core$Maybe$Just('1')),
+			maxYear: A2(
+				$elm$core$Maybe$withDefault,
+				$author$project$Main$defaultMaxYear,
+				A2(
+					$elm$core$Maybe$andThen,
+					$elm$core$String$toInt,
+					A2($elm$core$Dict$get, 'to', q))),
+			minYear: A2(
+				$elm$core$Maybe$withDefault,
+				$author$project$Main$defaultMinYear,
+				A2(
+					$elm$core$Maybe$andThen,
+					$elm$core$String$toInt,
+					A2($elm$core$Dict$get, 'from', q))),
+			populations: $elm$core$Dict$empty,
+			prizeFilter: A2($elm$core$Dict$get, 'prize', q),
+			prizes: _List_Nil,
+			selection: A2(
+				$elm$core$Maybe$withDefault,
+				$author$project$Main$NoSel,
+				A2(
+					$elm$core$Maybe$map,
+					$author$project$Main$selectionFromCode,
+					A2($elm$core$Dict$get, 'sel', q))),
+			status: $author$project$Main$Loading,
+			tab: A2(
+				$elm$core$Maybe$withDefault,
+				$author$project$Main$TopCountries,
+				A2(
+					$elm$core$Maybe$map,
+					$author$project$Main$tabFromCode,
+					A2($elm$core$Dict$get, 'tab', q)))
+		},
+		$elm$core$Platform$Cmd$batch(
+			_List_fromArray(
+				[$author$project$Main$fetchPrizes, $author$project$Main$fetchPopulation])));
+};
+var $elm$core$Platform$Sub$batch = _Platform_batch;
+var $elm$core$Platform$Sub$none = $elm$core$Platform$Sub$batch(_List_Nil);
+var $author$project$Main$Failed = function (a) {
+	return {$: 'Failed', a: a};
 };
 var $author$project$Main$httpErrToString = F2(
 	function (src, err) {
@@ -6391,15 +6591,117 @@ var $author$project$Main$readyIf = F2(
 	function (b, s) {
 		return b ? $author$project$Main$Ready : s;
 	});
-var $elm$core$Maybe$withDefault = F2(
-	function (_default, maybe) {
-		if (maybe.$ === 'Just') {
-			var value = maybe.a;
-			return value;
-		} else {
-			return _default;
-		}
-	});
+var $elm$url$Url$percentEncode = _Url_percentEncode;
+var $author$project$Main$selectionToCode = function (sel) {
+	switch (sel.$) {
+		case 'NoSel':
+			return $elm$core$Maybe$Nothing;
+		case 'SelCountry':
+			var s = sel.a;
+			return $elm$core$Maybe$Just('country:' + s);
+		case 'SelCategory':
+			var s = sel.a;
+			return $elm$core$Maybe$Just('category:' + s);
+		case 'SelReligion':
+			var s = sel.a;
+			return $elm$core$Maybe$Just('religion:' + s);
+		case 'SelReligionGroup':
+			var s = sel.a;
+			return $elm$core$Maybe$Just('religiongroup:' + s);
+		case 'SelEthnicGroup':
+			var s = sel.a;
+			return $elm$core$Maybe$Just('ethnic:' + s);
+		case 'SelMissingReligion':
+			return $elm$core$Maybe$Just('missingreligion');
+		case 'SelMissingEthnicGroup':
+			return $elm$core$Maybe$Just('missingethnic');
+		case 'SelDecade':
+			var y = sel.a;
+			return $elm$core$Maybe$Just(
+				'decade:' + $elm$core$String$fromInt(y));
+		default:
+			var y = sel.a;
+			return $elm$core$Maybe$Just(
+				'year:' + $elm$core$String$fromInt(y));
+	}
+};
+var $author$project$Main$tabToCode = function (t) {
+	switch (t.$) {
+		case 'TopCountries':
+			return 'country';
+		case 'PerCapita':
+			return 'percapita';
+		case 'OverTime':
+			return 'time';
+		case 'GenderOverTime':
+			return 'gender';
+		case 'ByCategory':
+			return 'category';
+		case 'ByReligion':
+			return 'religion';
+		default:
+			return 'ethnicity';
+	}
+};
+var $author$project$Main$buildQuery = function (model) {
+	var params = A2(
+		$elm$core$List$filterMap,
+		$elm$core$Basics$identity,
+		_List_fromArray(
+			[
+				_Utils_eq(model.tab, $author$project$Main$TopCountries) ? $elm$core$Maybe$Nothing : $elm$core$Maybe$Just(
+				_Utils_Tuple2(
+					'tab',
+					$author$project$Main$tabToCode(model.tab))),
+				A2(
+				$elm$core$Maybe$map,
+				function (c) {
+					return _Utils_Tuple2('prize', c);
+				},
+				model.prizeFilter),
+				A2(
+				$elm$core$Maybe$map,
+				function (c) {
+					return _Utils_Tuple2('cat', c);
+				},
+				model.categoryFilter),
+				_Utils_eq(model.minYear, $author$project$Main$defaultMinYear) ? $elm$core$Maybe$Nothing : $elm$core$Maybe$Just(
+				_Utils_Tuple2(
+					'from',
+					$elm$core$String$fromInt(model.minYear))),
+				_Utils_eq(model.maxYear, $author$project$Main$defaultMaxYear) ? $elm$core$Maybe$Nothing : $elm$core$Maybe$Just(
+				_Utils_Tuple2(
+					'to',
+					$elm$core$String$fromInt(model.maxYear))),
+				model.includePeace ? $elm$core$Maybe$Just(
+				_Utils_Tuple2('peace', '1')) : $elm$core$Maybe$Nothing,
+				A2(
+				$elm$core$Maybe$map,
+				function (c) {
+					return _Utils_Tuple2('sel', c);
+				},
+				$author$project$Main$selectionToCode(model.selection))
+			]));
+	return $elm$core$List$isEmpty(params) ? '' : ('?' + A2(
+		$elm$core$String$join,
+		'&',
+		A2(
+			$elm$core$List$map,
+			function (_v0) {
+				var k = _v0.a;
+				var v = _v0.b;
+				return k + ('=' + $elm$url$Url$percentEncode(v));
+			},
+			params)));
+};
+var $elm$json$Json$Encode$string = _Json_wrap;
+var $author$project$Main$setQueryString = _Platform_outgoingPort('setQueryString', $elm$json$Json$Encode$string);
+var $author$project$Main$syncUrl = function (model) {
+	return _Utils_Tuple2(
+		model,
+		$author$project$Main$setQueryString(
+			$author$project$Main$buildQuery(model)));
+};
 var $author$project$Main$update = F2(
 	function (msg, model) {
 		switch (msg.$) {
@@ -6459,46 +6761,41 @@ var $author$project$Main$update = F2(
 				}
 			case 'SetTab':
 				var t = msg.a;
-				return _Utils_Tuple2(
+				return $author$project$Main$syncUrl(
 					_Utils_update(
 						model,
-						{selection: $author$project$Main$NoSel, tab: t}),
-					$elm$core$Platform$Cmd$none);
+						{selection: $author$project$Main$NoSel, tab: t}));
 			case 'Select':
 				var sel = msg.a;
-				return _Utils_Tuple2(
+				return $author$project$Main$syncUrl(
 					_Utils_update(
 						model,
-						{selection: sel}),
-					$elm$core$Platform$Cmd$none);
+						{selection: sel}));
 			case 'ClearSelection':
-				return _Utils_Tuple2(
+				return $author$project$Main$syncUrl(
 					_Utils_update(
 						model,
-						{selection: $author$project$Main$NoSel}),
-					$elm$core$Platform$Cmd$none);
+						{selection: $author$project$Main$NoSel}));
 			case 'SetCategory':
 				var s = msg.a;
-				return _Utils_Tuple2(
+				return $author$project$Main$syncUrl(
 					_Utils_update(
 						model,
 						{
 							categoryFilter: (s === '') ? $elm$core$Maybe$Nothing : $elm$core$Maybe$Just(s)
-						}),
-					$elm$core$Platform$Cmd$none);
+						}));
 			case 'SetPrize':
 				var s = msg.a;
-				return _Utils_Tuple2(
+				return $author$project$Main$syncUrl(
 					_Utils_update(
 						model,
 						{
 							prizeFilter: (s === '') ? $elm$core$Maybe$Nothing : $elm$core$Maybe$Just(s),
 							selection: $author$project$Main$NoSel
-						}),
-					$elm$core$Platform$Cmd$none);
+						}));
 			case 'SetMinYear':
 				var s = msg.a;
-				return _Utils_Tuple2(
+				return $author$project$Main$syncUrl(
 					_Utils_update(
 						model,
 						{
@@ -6506,11 +6803,10 @@ var $author$project$Main$update = F2(
 								$elm$core$Maybe$withDefault,
 								model.minYear,
 								$elm$core$String$toInt(s))
-						}),
-					$elm$core$Platform$Cmd$none);
+						}));
 			case 'SetMaxYear':
 				var s = msg.a;
-				return _Utils_Tuple2(
+				return $author$project$Main$syncUrl(
 					_Utils_update(
 						model,
 						{
@@ -6518,18 +6814,15 @@ var $author$project$Main$update = F2(
 								$elm$core$Maybe$withDefault,
 								model.maxYear,
 								$elm$core$String$toInt(s))
-						}),
-					$elm$core$Platform$Cmd$none);
+						}));
 			default:
 				var b = msg.a;
-				return _Utils_Tuple2(
+				return $author$project$Main$syncUrl(
 					_Utils_update(
 						model,
-						{includePeace: b, selection: $author$project$Main$NoSel}),
-					$elm$core$Platform$Cmd$none);
+						{includePeace: b, selection: $author$project$Main$NoSel}));
 		}
 	});
-var $elm$json$Json$Encode$string = _Json_wrap;
 var $elm$html$Html$Attributes$stringProperty = F2(
 	function (key, string) {
 		return A2(
@@ -6603,7 +6896,6 @@ var $author$project$Main$filtered = function (model) {
 					},
 					model.prizes))));
 };
-var $author$project$Main$ByCategory = {$: 'ByCategory'};
 var $elm$core$List$append = F2(
 	function (xs, ys) {
 		if (!ys.b) {
@@ -6703,9 +6995,6 @@ var $author$project$Main$religionsRolledUp = function (rs) {
 			}),
 		_List_Nil,
 		A2($elm$core$List$map, $author$project$Main$religionGroupName, rs));
-};
-var $author$project$Main$SelCategory = function (a) {
-	return {$: 'SelCategory', a: a};
 };
 var $author$project$Main$Select = function (a) {
 	return {$: 'Select', a: a};
@@ -6850,16 +7139,6 @@ var $author$project$Main$barChart = F4(
 				]),
 			A2($elm$core$List$indexedMap, viewRow, rows));
 	});
-var $elm$core$Maybe$map = F2(
-	function (f, maybe) {
-		if (maybe.$ === 'Just') {
-			var value = maybe.a;
-			return $elm$core$Maybe$Just(
-				f(value));
-		} else {
-			return $elm$core$Maybe$Nothing;
-		}
-	});
 var $elm$core$Basics$negate = function (n) {
 	return -n;
 };
@@ -6943,17 +7222,6 @@ var $author$project$Main$viewByCategory = function (ps) {
 					return c + (' — ' + $elm$core$String$fromInt(n));
 				})
 			]));
-};
-var $author$project$Main$SelEthnicGroup = function (a) {
-	return {$: 'SelEthnicGroup', a: a};
-};
-var $author$project$Main$SelMissingEthnicGroup = {$: 'SelMissingEthnicGroup'};
-var $author$project$Main$SelMissingReligion = {$: 'SelMissingReligion'};
-var $author$project$Main$SelReligion = function (a) {
-	return {$: 'SelReligion', a: a};
-};
-var $author$project$Main$SelReligionGroup = function (a) {
-	return {$: 'SelReligionGroup', a: a};
 };
 var $author$project$Main$barChartTagged = F4(
 	function (onClickFn, rows, labelFn, isUnknown) {
@@ -7865,9 +8133,6 @@ var $author$project$Main$viewLaureate = function (p) {
 					]),
 				wikiLink)));
 };
-var $author$project$Main$SelYear = function (a) {
-	return {$: 'SelYear', a: a};
-};
 var $elm$core$Tuple$second = function (_v0) {
 	var y = _v0.b;
 	return y;
@@ -8618,9 +8883,6 @@ var $author$project$Main$viewOverTime = function (ps) {
 				$author$project$Main$lineChart(rows)
 			]));
 };
-var $author$project$Main$SelCountry = function (a) {
-	return {$: 'SelCountry', a: a};
-};
 var $author$project$Main$viewPerCapita = F2(
 	function (populations, ps) {
 		var counts = A2(
@@ -8726,11 +8988,6 @@ var $author$project$Main$viewSummary = function (ps) {
 					]))
 			]));
 };
-var $author$project$Main$ByEthnicGroup = {$: 'ByEthnicGroup'};
-var $author$project$Main$ByReligion = {$: 'ByReligion'};
-var $author$project$Main$GenderOverTime = {$: 'GenderOverTime'};
-var $author$project$Main$OverTime = {$: 'OverTime'};
-var $author$project$Main$PerCapita = {$: 'PerCapita'};
 var $author$project$Main$SetTab = function (a) {
 	return {$: 'SetTab', a: a};
 };
@@ -8961,5 +9218,4 @@ var $author$project$Main$main = $elm$browser$Browser$element(
 		update: $author$project$Main$update,
 		view: $author$project$Main$view
 	});
-_Platform_export({'Main':{'init':$author$project$Main$main(
-	$elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)}});}(this));
+_Platform_export({'Main':{'init':$author$project$Main$main($elm$json$Json$Decode$string)(0)}});}(this));

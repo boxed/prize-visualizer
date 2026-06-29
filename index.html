@@ -9,7 +9,16 @@
     <div id="app"></div>
     <script src="main.js"></script>
     <script>
-      Elm.Main.init({ node: document.getElementById('app') });
+      var app = Elm.Main.init({
+        node: document.getElementById('app'),
+        flags: window.location.search
+      });
+      // Mirror filter/tab/selection state into the URL (without adding history
+      // entries) so the current view can be copied and shared as a link.
+      app.ports.setQueryString.subscribe(function (queryString) {
+        var newUrl = window.location.pathname + queryString + window.location.hash;
+        window.history.replaceState(null, '', newUrl);
+      });
     </script>
   </body>
 </html>

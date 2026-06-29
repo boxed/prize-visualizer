@@ -1,4 +1,4 @@
-module Main exposing (main)
+port module Main exposing (main)
 
 import Browser
 import Dict exposing (Dict)
@@ -10,6 +10,17 @@ import Json.Decode as D
 import Svg exposing (Svg)
 import Svg.Attributes as SA
 import Svg.Events as SE
+import Url
+
+
+
+-- PORTS
+-- The compiled app reads the initial query string from flags and writes the
+-- current state back via setQueryString (history.replaceState in index.html),
+-- so the URL always reflects the active filters and is shareable.
+
+
+port setQueryString : String -> Cmd msg
 
 
 
@@ -227,21 +238,241 @@ type Status
     | Failed String
 
 
-init : () -> ( Model, Cmd Msg )
-init _ =
+defaultMinYear : Int
+defaultMinYear =
+    1901
+
+
+defaultMaxYear : Int
+defaultMaxYear =
+    2026
+
+
+init : String -> ( Model, Cmd Msg )
+init search =
+    let
+        q =
+            parseQuery search
+    in
     ( { prizes = []
       , populations = Dict.empty
       , status = Loading
-      , tab = TopCountries
-      , categoryFilter = Nothing
-      , prizeFilter = Nothing
-      , minYear = 1901
-      , maxYear = 2026
-      , includePeace = False
-      , selection = NoSel
+      , tab = Dict.get "tab" q |> Maybe.map tabFromCode |> Maybe.withDefault TopCountries
+      , categoryFilter = Dict.get "cat" q
+      , prizeFilter = Dict.get "prize" q
+      , minYear = Dict.get "from" q |> Maybe.andThen String.toInt |> Maybe.withDefault defaultMinYear
+      , maxYear = Dict.get "to" q |> Maybe.andThen String.toInt |> Maybe.withDefault defaultMaxYear
+      , includePeace = Dict.get "peace" q == Just "1"
+      , selection = Dict.get "sel" q |> Maybe.map selectionFromCode |> Maybe.withDefault NoSel
       }
     , Cmd.batch [ fetchPrizes, fetchPopulation ]
     )
+
+
+
+-- URL STATE
+-- Filters, the active tab, and the current drill-down selection are mirrored
+-- into the query string so a link captures the full view. Defaults are omitted
+-- to keep shared URLs short.
+
+
+tabToCode : Tab -> String
+tabToCode t =
+    case t of
+        TopCountries ->
+            "country"
+
+        PerCapita ->
+            "percapita"
+
+        OverTime ->
+            "time"
+
+        GenderOverTime ->
+            "gender"
+
+        ByCategory ->
+            "category"
+
+        ByReligion ->
+            "religion"
+
+        ByEthnicGroup ->
+            "ethnicity"
+
+
+tabFromCode : String -> Tab
+tabFromCode s =
+    case s of
+        "percapita" ->
+            PerCapita
+
+        "time" ->
+            OverTime
+
+        "gender" ->
+            GenderOverTime
+
+        "category" ->
+            ByCategory
+
+        "religion" ->
+            ByReligion
+
+        "ethnicity" ->
+            ByEthnicGroup
+
+        _ ->
+            TopCountries
+
+
+selectionToCode : Selection -> Maybe String
+selectionToCode sel =
+    case sel of
+        NoSel ->
+            Nothing
+
+        SelCountry s ->
+            Just ("country:" ++ s)
+
+        SelCategory s ->
+            Just ("category:" ++ s)
+
+        SelReligion s ->
+            Just ("religion:" ++ s)
+
+        SelReligionGroup s ->
+            Just ("religiongroup:" ++ s)
+
+        SelEthnicGroup s ->
+            Just ("ethnic:" ++ s)
+
+        SelMissingReligion ->
+            Just "missingreligion"
+
+        SelMissingEthnicGroup ->
+            Just "missingethnic"
+
+        SelDecade y ->
+            Just ("decade:" ++ String.fromInt y)
+
+        SelYear y ->
+            Just ("year:" ++ String.fromInt y)
+
+
+selectionFromCode : String -> Selection
+selectionFromCode code =
+    case String.split ":" code of
+        kind :: rest ->
+            let
+                value =
+                    String.join ":" rest
+            in
+            case kind of
+                "country" ->
+                    SelCountry value
+
+                "category" ->
+                    SelCategory value
+
+                "religion" ->
+                    SelReligion value
+
+                "religiongroup" ->
+                    SelReligionGroup value
+
+                "ethnic" ->
+                    SelEthnicGroup value
+
+                "missingreligion" ->
+                    SelMissingReligion
+
+                "missingethnic" ->
+                    SelMissingEthnicGroup
+
+                "decade" ->
+                    String.toInt value |> Maybe.map SelDecade |> Maybe.withDefault NoSel
+
+                "year" ->
+                    String.toInt value |> Maybe.map SelYear |> Maybe.withDefault NoSel
+
+                _ ->
+                    NoSel
+
+        [] ->
+            NoSel
+
+
+buildQuery : Model -> String
+buildQuery model =
+    let
+        params =
+            List.filterMap identity
+                [ if model.tab == TopCountries then
+                    Nothing
+
+                  else
+                    Just ( "tab", tabToCode model.tab )
+                , Maybe.map (\c -> ( "prize", c )) model.prizeFilter
+                , Maybe.map (\c -> ( "cat", c )) model.categoryFilter
+                , if model.minYear == defaultMinYear then
+                    Nothing
+
+                  else
+                    Just ( "from", String.fromInt model.minYear )
+                , if model.maxYear == defaultMaxYear then
+                    Nothing
+
+                  else
+                    Just ( "to", String.fromInt model.maxYear )
+                , if model.includePeace then
+                    Just ( "peace", "1" )
+
+                  else
+                    Nothing
+                , selectionToCode model.selection |> Maybe.map (\c -> ( "sel", c ))
+                ]
+    in
+    if List.isEmpty params then
+        ""
+
+    else
+        "?" ++ String.join "&" (List.map (\( k, v ) -> k ++ "=" ++ Url.percentEncode v) params)
+
+
+parseQuery : String -> Dict String String
+parseQuery search =
+    let
+        body =
+            if String.startsWith "?" search then
+                String.dropLeft 1 search
+
+            else
+                search
+    in
+    body
+        |> String.split "&"
+        |> List.filterMap
+            (\pair ->
+                case String.split "=" pair of
+                    key :: valueParts ->
+                        if key == "" then
+                            Nothing
+
+                        else
+                            String.join "=" valueParts
+                                |> Url.percentDecode
+                                |> Maybe.map (\v -> ( key, v ))
+
+                    [] ->
+                        Nothing
+            )
+        |> Dict.fromList
+
+
+syncUrl : Model -> ( Model, Cmd Msg )
+syncUrl model =
+    ( model, setQueryString (buildQuery model) )
 
 
 
@@ -334,47 +565,45 @@ update msg model =
             ( { model | status = Failed (httpErrToString "population" e) }, Cmd.none )
 
         SetTab t ->
-            ( { model | tab = t, selection = NoSel }, Cmd.none )
+            syncUrl { model | tab = t, selection = NoSel }
 
         Select sel ->
-            ( { model | selection = sel }, Cmd.none )
+            syncUrl { model | selection = sel }
 
         ClearSelection ->
-            ( { model | selection = NoSel }, Cmd.none )
+            syncUrl { model | selection = NoSel }
 
         SetCategory s ->
-            ( { model
-                | categoryFilter =
-                    if s == "" then
-                        Nothing
+            syncUrl
+                { model
+                    | categoryFilter =
+                        if s == "" then
+                            Nothing
 
-                    else
-                        Just s
-              }
-            , Cmd.none
-            )
+                        else
+                            Just s
+                }
 
         SetPrize s ->
-            ( { model
-                | prizeFilter =
-                    if s == "" then
-                        Nothing
+            syncUrl
+                { model
+                    | prizeFilter =
+                        if s == "" then
+                            Nothing
 
-                    else
-                        Just s
-                , selection = NoSel
-              }
-            , Cmd.none
-            )
+                        else
+                            Just s
+                    , selection = NoSel
+                }
 
         SetMinYear s ->
-            ( { model | minYear = String.toInt s |> Maybe.withDefault model.minYear }, Cmd.none )
+            syncUrl { model | minYear = String.toInt s |> Maybe.withDefault model.minYear }
 
         SetMaxYear s ->
-            ( { model | maxYear = String.toInt s |> Maybe.withDefault model.maxYear }, Cmd.none )
+            syncUrl { model | maxYear = String.toInt s |> Maybe.withDefault model.maxYear }
 
         SetIncludePeace b ->
-            ( { model | includePeace = b, selection = NoSel }, Cmd.none )
+            syncUrl { model | includePeace = b, selection = NoSel }
 
 
 markReady : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
@@ -1622,7 +1851,7 @@ styles =
 -- MAIN
 
 
-main : Program () Model Msg
+main : Program String Model Msg
 main =
     Browser.element
         { init = init
